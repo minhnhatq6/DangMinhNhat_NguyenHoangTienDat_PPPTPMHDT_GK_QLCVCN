@@ -33,17 +33,22 @@ class _MilestonePageState extends State<MilestonePage> {
 
     if (result != null) {
       try {
-        if (milestone == null) {
+        if (milestone == null) { // Chế độ TẠO MỚI
           final newMilestone = Milestone(
             id: '', name: result['name'], description: result['description'],
             projectId: result['projectId'], date: result['date'],
           );
           await milestoneProv.addMilestone(newMilestone);
-        } else {
+        } else { // Chế độ SỬA
+          // --- SỬA LỖI TẠI ĐÂY ---
           await milestoneProv.updateMilestone(milestone.id, {
-            'name': result['name'], 'description': result['description'],
-            'projectId': result['projectId'], 'date': result['date']?.toIso8601String(),
+            'name': result['name'],
+            'description': result['description'],
+            // Đổi 'projectId' thành 'project' để khớp với API backend
+            'project': result['projectId'],
+            'date': result['date']?.toIso8601String(),
           });
+          // --------------------------
         }
       } catch (e) {
         if (mounted) {
@@ -79,77 +84,51 @@ class _MilestonePageState extends State<MilestonePage> {
             final m = prov.milestones[i];
             final projectColor = m.projectColors.isNotEmpty ? _parseColor(m.projectColors.first) : Colors.grey;
 
-            // --- CẤU TRÚC ĐÚNG ĐỂ TRÁNH OVERFLOW ---
             return Card(
               elevation: 2,
               margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: InkWell(
+              child: ListTile(
                 onTap: () => _openAddEditDialog(milestone: m),
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(Icons.flag_circle, color: projectColor, size: 36),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 4),
-                            Text(m.projectName ?? 'Không có dự án', style: TextStyle(color: Colors.grey[600])),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (m.date != null)
-                            Text(DateFormat('dd/MM/yyyy').format(m.date!), style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                          SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: PopupMenuButton<String>(
-                              padding: EdgeInsets.zero,
-                              iconSize: 20,
-                              onSelected: (value) async {
-                                if (value == 'edit') {
-                                  _openAddEditDialog(milestone: m);
-                                } else if (value == 'delete') {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('Xác nhận'),
-                                      content: Text('Bạn có muốn xóa cột mốc "${m.name}" không?'),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Xóa')),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirm == true) {
-                                    try {
-                                      await prov.deleteMilestone(m.id);
-                                    } catch (e) {
-                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Xóa thất bại: $e')));
-                                    }
-                                  }
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                                PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Icon(Icons.flag_circle, color: projectColor, size: 36),
+                title: Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(m.projectName ?? 'Không có dự án'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (m.date != null) Text(DateFormat('dd/MM/yyyy').format(m.date!)),
+                    PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          _openAddEditDialog(milestone: m);
+                        } else if (value == 'delete') {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Xác nhận'),
+                              content: Text('Bạn có muốn xóa cột mốc "${m.name}" không?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Xóa')),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          );
+                          if (confirm == true) {
+                            try {
+                              await prov.deleteMilestone(m.id);
+                            } catch (e) {
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Xóa thất bại: $e')));
+                            }
+                          }
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                        PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             );

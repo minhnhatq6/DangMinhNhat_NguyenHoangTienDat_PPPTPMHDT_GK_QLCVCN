@@ -101,7 +101,24 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // POST /api/tasks/:id/complete (Giữ nguyên)
-router.post('/:id/complete', auth, async (req, res) => { /* ... */ });
+router.post('/:id/complete', auth, async (req, res) => {
+  try {
+    const { done } = req.body;
+    const task = await Task.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!task) return res.status(404).json({ message: 'Task không tồn tại' });
+
+    task.isDone = !!done;
+    task.completedAt = task.isDone ? new Date() : null;
+    if (task.isDone) task.progress = 100;
+
+    await task.save();
+    const populated = await Task.findById(task._id).populate('project', 'name colors');
+    res.json(populated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
 
 // --- ROUTE /archive ĐÃ BỊ XÓA BỎ ---
 
@@ -145,6 +162,18 @@ router.get('/stats', auth, async (req, res) => {
 });
 
 // DELETE /api/tasks/:id (Giữ nguyên)
-router.delete('/:id', auth, async (req, res) => { /* ... */ });
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const task = await Task.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!task) {
+        return res.status(404).json({ message: 'Công việc không tồn tại hoặc bạn không có quyền xóa' });
+    }
+    await Task.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Đã xóa công việc thành công' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
 
 module.exports = router;

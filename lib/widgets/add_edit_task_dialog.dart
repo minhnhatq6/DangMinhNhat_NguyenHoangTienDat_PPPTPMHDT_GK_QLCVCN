@@ -42,9 +42,13 @@ class _AddEditTaskDialogState extends State<AddEditTaskDialog> {
     _projectId = t?.projectId;
     _progress = t?.progress ?? 0;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ProjectProvider>(context, listen: false).loadProjects();
-    });
+    // --- THÊM LOGIC KIỂM TRA TÍNH HỢP LỆ ---
+    final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
+    // Kiểm tra xem projectId của task có còn tồn tại trong danh sách project không
+    if (_projectId != null && !projectProvider.projects.any((p) => p.id == _projectId)) {
+      // Nếu không tồn tại (đã bị xóa), hãy đặt lại _projectId thành null
+      _projectId = null;
+    }
   }
 
   @override
