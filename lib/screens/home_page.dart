@@ -209,44 +209,75 @@ class _HomePageState extends State<HomePage> {
       const ProjectPage(),
     ];
 
-    return Scaffold(
+   return Scaffold(
       appBar: AppBar(
         title: Text('Tasks - ${auth.user?['displayName'] ?? ''}'),
         actions: [
-          IconButton(icon: Icon(themeProv.isDark ? Icons.dark_mode : Icons.light_mode), onPressed: () => themeProv.toggle()),
+          IconButton(icon: Icon(themeProv.isDark ? Icons.brightness_2_outlined : Icons.wb_sunny_outlined), onPressed: () => themeProv.toggle()),
           IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
-                await auth.logout();
-                Provider.of<TaskProvider>(context, listen: false).tasks.clear();
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-              })
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await auth.logout();
+              // Xóa dữ liệu providers khi logout
+              Provider.of<TaskProvider>(context, listen: false).tasks.clear();
+              Provider.of<ProjectProvider>(context, listen: false).projects.clear();
+              // ...
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            },
+          ),
         ],
       ),
-      body: pages[_currentIndex],
-      // --- THAY ĐỔI LOGIC HIỂN THỊ FAB ---
-      // FAB giờ chỉ được định nghĩa cho trang "Công việc" (index 0).
-      // Trang ProjectPage sẽ tự hiển thị và quản lý FAB của riêng nó.
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-        onPressed: _openAddDialog,
-        child: const Icon(Icons.add),
-      )
-          : null, // Trả về null cho tất cả các trang khác
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+      // Sử dụng LayoutBuilder để chọn giao diện phù hợp
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Nếu chiều rộng màn hình lớn hơn 600px (ngưỡng cho tablet/web)
+          if (constraints.maxWidth > 600) {
+            // Hiển thị giao diện Web với NavigationRail
+            return Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: (index) {
+                    setState(() => _currentIndex = index);
+                  },
+                  labelType: NavigationRailLabelType.all, // Hiển thị cả icon và text
+                  leading: FloatingActionButton(
+                    elevation: 0,
+                    onPressed: _openAddDialog,
+                    child: const Icon(Icons.add),
+                  ),
+                  destinations: const <NavigationRailDestination>[
+                    NavigationRailDestination(icon: Icon(Icons.task_outlined), selectedIcon: Icon(Icons.task), label: Text('Công việc')),
+                    NavigationRailDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: Text('Lịch')),
+                    NavigationRailDestination(icon: Icon(Icons.flag_outlined), selectedIcon: Icon(Icons.flag), label: Text('Cột mốc')),
+                    NavigationRailDestination(icon: Icon(Icons.workspaces_outlined), selectedIcon: Icon(Icons.workspaces), label: Text('Dự án')),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: pages[_currentIndex]),
+              ],
+            );
+          } else {
+            // Hiển thị giao diện Mobile với BottomNavigationBar
+            return Scaffold(
+              body: pages[_currentIndex],
+              floatingActionButton: _currentIndex == 0
+                  ? FloatingActionButton(onPressed: _openAddDialog, child: const Icon(Icons.add))
+                  : null,
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: _currentIndex,
+                onTap: (index) => setState(() => _currentIndex = index),
+                type: BottomNavigationBarType.fixed,
+                items: const [
+                  BottomNavigationBarItem(icon: Icon(Icons.task), label: "Công việc"),
+                  BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: "Lịch"),
+                  BottomNavigationBarItem(icon: Icon(Icons.flag), label: "Cột mốc"),
+                  BottomNavigationBarItem(icon: Icon(Icons.workspaces), label: "Dự án"),
+                ],
+              ),
+            );
+          }
         },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.task), label: "Công việc"),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: "Lịch"),
-          BottomNavigationBarItem(icon: Icon(Icons.flag), label: "Cột mốc"),
-          BottomNavigationBarItem(icon: Icon(Icons.workspaces), label: "Dự án"),
-        ],
       ),
     );
   }
